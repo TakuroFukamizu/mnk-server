@@ -3,19 +3,38 @@
 const express = require('express');
 const app = express();
 const http = require('http').createServer(app);
-const io = require('socket.io')(http);
-
+// const io = require('socket.io')(http);
 
 const child_process = require("child_process");
 const seqWorker = child_process('./src/backend/sequenceWorker');
 
 const DEFAULT_PORT = 80;
 
-
 if (process.env.STUB) {
     console.info('STUB mode');
 }
 // photKind.setStubMode();
+
+// ----------------------------------------------
+// Sequence Worker
+// ----------------------------------------------
+
+// sequence workerをchild process実行
+seqWorker.on("message", function (msg) {
+    console.log(msg);
+
+    setTimeout(function () {
+        seqWorker.send({ message: "from parent" });
+    }, 1000);
+});
+seqWorker.send({ message: "from parent" });
+
+// ----------------------------------------------
+
+
+// ----------------------------------------------
+// WebServer
+// ----------------------------------------------
 
 app.use(express.static(__dirname + '/public'));
 
@@ -30,22 +49,23 @@ app.get('/_api/loadSeq', function(req, res){
     // }).catch((errorCode) => {
     //     res.status(errorCode).end();
     // });
+    
 });
 
-io.on('connection', (socket) => {
-    console.log('connected', socket.client.id);
+// io.on('connection', (socket) => {
+//     console.log('connected', socket.client.id);
 
-    // Player向けのコマンド
-    socket.on('player.play', (msg) => {
-        child.send({ message: "play" });
-    });
-    socket.on('player.pause', (msg) => {
-        child.send({ message: "pause" });
-    });
-    socket.on('player.resume', (msg) => {
-        child.send({ message: "resume" });
-    });
-});
+//     // Player向けのコマンド
+//     socket.on('player.play', (msg) => {
+//         child.send({ message: "play" });
+//     });
+//     socket.on('player.pause', (msg) => {
+//         child.send({ message: "pause" });
+//     });
+//     socket.on('player.resume', (msg) => {
+//         child.send({ message: "resume" });
+//     });
+// });
 
 
 // const server = app.listen(process.env.PORT || DEFAULT_PORT, () => {

@@ -36,13 +36,17 @@ module.exports = {
       'vue$': 'vue/dist/vue.esm.js',
       'settings': `settings.local.js`
     },
-    extensions: ['.js', 'css', '.scss', '.vue']
+    extensions: ['.js', 'css', '.scss', '.ts', '.vue']
   },
   module: {
     loaders: [
       {
         test: /\.vue$/,
         loader: 'vue-loader'
+      },
+      { 
+          test: /\.ts?$/,
+          loader: 'ts-loader'
       },
       {
         test: /\.js$/,

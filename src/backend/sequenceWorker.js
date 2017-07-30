@@ -2,6 +2,8 @@
 
 const mqtt = require('mqtt');
 
+const MqttData = require('./mqttData');
+
 const MQ_URL = 'mqtt://localhost';
 const MQ_CH_PLAYER = 'player';
 
