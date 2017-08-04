@@ -5,21 +5,43 @@ import * as http from 'http';
 import * as child from 'child_process';
 import * as path from 'path';
 import {IpcMessage, IpcMessageType, IpcMaintMessage} from './model/ipcMessage';
-
-const app = express();
-const httpServer = http.createServer(app);
+import LocalDataManager from './localDataManager';
+import SequenceDataset from './model/sequenceDataset';
+import SequenceData from './model/sequenceData';
 
 const DEFAULT_PORT = 80;
 
 const PATH_SEQWORKER = path.join(__dirname, 'sequenceWorker');
 const PATH_WEBAPP = path.join(__dirname, 'public');
 
-if (process.env.STUB) {
-    console.info('STUB mode');
-}
-// photKind.setStubMode();
+// ----------------------------------------------
+// Setup
+// ----------------------------------------------
+
+const app = express();
+const httpServer = http.createServer(app);
+
+const local = new LocalDataManager();
 
 let onExitProcess = false;
+
+function initialize() {
+    if (process.env.STUB) {
+        console.info('STUB mode');
+    }
+
+    // ローカルファイルの設定
+    local.basepath = path.join(__dirname, '.work');
+    local.sequenceDataFilename = 'sequcence.json';
+
+    // デバイスの初期化
+    seqWorker.send(new IpcMessage(IpcMessageType.Maint, IpcMaintMessage.Init));
+
+    // 保存されているシーケンスデータをセット
+    let dataset = local.loadSequenceDataset();
+}
+
+// ----------------------------------------------
 
 // ----------------------------------------------
 // Sequence Worker
@@ -57,18 +79,6 @@ const seqWorker: child.ChildProcess = child.fork(PATH_SEQWORKER) // sequence wor
 
 // ----------------------------------------------
 
-
-// ----------------------------------------------
-// Setup
-// ----------------------------------------------
-
-// デバイスの初期化
-seqWorker.send(new IpcMessage(IpcMessageType.Maint, IpcMaintMessage.Init));
-
-
-// ----------------------------------------------
-
-
 // ----------------------------------------------
 // WebServer
 // ----------------------------------------------
@@ -77,13 +87,23 @@ app.use(express.static(PATH_WEBAPP));
 app.get('/_api/loadSeq', (req, res) => {
     // TODO: Google Spreadsheetからデータを取得
     // https://www.npmjs.com/package/google-spreadsheet
-    // child.send({ message: <<sequence data>> });
-    seqWorker.send(new IpcMessage(IpcMessageType.SequenceData, {
+
+    let jsonObj = {
         list: [
             [ "mononoke", "1.2", "front", "low", "予備のコラム", "メモ、コメント用" ],
             [ "mononoke", "1.2", "front", "low", "予備のコラム", "メモ、コメント用" ]
         ]
-    }));
+    };
+    let dataset = new SequenceDataset();
+    for(let row of jsonObj.list) {
+        dataset.list.push(SequenceData.fromAny(row));
+    }
+    seqWorker.send(new IpcMessage(IpcMessageType.SequenceData, dataset.list));
+
+    // ローカルに保存
+    local.saveSequenceDataset(dataset);
+
+    res.json({ command: "loadSeq", status: "success" });
 
     // let name = req.query.name;
     // userProf.profile(name).then((parsedData) => {
@@ -104,6 +124,15 @@ app.get('/_api/reset', (req, res) => {
     seqWorker.send(new IpcMessage(IpcMessageType.Command, "reset"));
     res.json({ command: "reset", status: "success" });
 });
+
+
+// ----------------------------------------------
+
+// ----------------------------------------------
+// Execute
+// ----------------------------------------------
+
+initialize();
 
 // const server = app.listen(process.env.PORT || DEFAULT_PORT, () => {
 //     console.log("Node.js is listening to PORT:" + server.address().port);

@@ -15,19 +15,19 @@ export default class SequenceDataManager extends events.EventEmitter {
         this.list = [];
         this.emit('ready');
     }
-    static fromAny(json: any) {
-        let instance = new SequenceDataManager();
-        for(let row of json.list) {
-            try {
-                let d = SequenceData.fromAny(row);
-                instance.list.push(d);
-            } catch (error) {
-                // skip
-                console.error(error, row);
-            }
-        }
-        return instance;
-    }
+    // static fromAny(list: any) {
+    //     let instance = new SequenceDataManager();
+    //     for(let row of list) {
+    //         try {
+    //             let d = SequenceData.fromAny(row);
+    //             instance.list.push(d);
+    //         } catch (error) {
+    //             // skip
+    //             console.error(error, row);
+    //         }
+    //     }
+    //     return instance;
+    // }
 
     start() : boolean {
         if (this.inPlaying) { //再生中

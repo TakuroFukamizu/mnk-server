@@ -18,7 +18,10 @@ describe("SequenceDataManager", () => {
         ] };
 
     it("from json", () => {
-        mng = SequenceDataManager.fromAny(json);
+        mng = new SequenceDataManager();
+        for (let row of json.list) {
+            mng.list.push(SequenceData.fromAny(row));
+        }
         assert.equal(mng.list.length, json.list.length);
     });
 

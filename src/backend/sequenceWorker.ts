@@ -12,7 +12,6 @@ console.log("child start");
 
 const mqtt = new MqttManager(MQ_URL);
 let seqData: SequenceDataManager | null = null;
-initSeqData(seqData);
 
 // ローカルに保存済みのシーケンスデータがある場合は読み込む
 // TODO:
@@ -43,9 +42,8 @@ process.on("message", (msg) => {
             }
             break;
         case IpcMessageType.SequenceData: //シーケンスデータ
-            // msgObj.payload = { list: [ {topic, timeline, ...}, ... ], lastModified: number }
-            seqData = SequenceDataManager.fromAny(msgObj.payload);
-            initSeqData(seqData);
+            // msgObj.payload = [ {topic, timeline, ...}, ... ]
+            setSequenceData(msgObj.payload);
             break;
         case IpcMessageType.Command: //再生制御
             switch (msgObj.payload) {
@@ -72,20 +70,6 @@ process.on("exit", () =>  {
 
 // -------------------------
 
-function initSeqData(mng: SequenceDataManager) {
-    mng.on("data", (row) => { //SequenceDataManagerで送信要求が発生した時の処理
-        let obj: SequenceData = row;
-        let mqttData = obj.toMqttObject();
-        mqtt.send(mqttData);
-    });
-    mng.on("dataEnd", () => {
-        //再生終了
-    });
-    return mng;
-}
-
-// -------------------------
-
 /**
  * 初期化
  */
@@ -94,6 +78,25 @@ function initialize() {
     mqtt.sendCommandESPr(TargetDevice.Front, ESPrCommand.High);
     mqtt.sendCommandESPr(TargetDevice.Rear, ESPrCommand.High);
     mqtt.sendCommadPlayer(PlayerCommand.Reset);
+}
+
+/**
+ * シーケンスファイルをセットする
+ * @param value  [ {topic, timeline, ...}, ... ]
+ */
+function setSequenceData(list: Array<SequenceData>) {
+    // seqData = SequenceDataManager.fromAny(value);
+    seqData = new SequenceDataManager();
+    seqData.list = list;
+    
+    seqData.on("data", (row) => { //SequenceDataManagerで送信要求が発生した時の処理
+        let obj: SequenceData = row;
+        let mqttData = obj.toMqttObject();
+        mqtt.send(mqttData);
+    });
+    seqData.on("dataEnd", () => {
+        //再生終了
+    });
 }
 
 /**
