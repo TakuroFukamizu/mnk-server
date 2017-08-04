@@ -1,7 +1,7 @@
 import assert from 'power-assert';
 import 'mocha';
 import SequenceData from './sequenceData';
-import { ESPrCommand } from './defines'
+import { ESPrCommand } from '../defines'
 
 
 describe("SequenceData", () => {

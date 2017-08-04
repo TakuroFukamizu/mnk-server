@@ -1,5 +1,5 @@
 
-import {PlayerCommand, ESPrCommand, TargetDevice} from './defines';
+import {PlayerCommand, ESPrCommand, TargetDevice} from '../defines';
 import MqttData from './mqttData';
 
 export default class SequenceData {

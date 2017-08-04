@@ -1,4 +1,4 @@
-import {PlayerCommand, ESPrCommand, TargetDevice} from './defines';
+import {PlayerCommand, ESPrCommand, TargetDevice} from '../defines';
 
 export default class MqttData {
     topic: string;

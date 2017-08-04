@@ -1,5 +1,5 @@
 
-import SequenceData from './sequenceData';
+import SequenceData from './model/sequenceData';
 import * as events from 'events';
 
 export default class SequenceDataManager extends events.EventEmitter {
@@ -54,6 +54,7 @@ export default class SequenceDataManager extends events.EventEmitter {
             while (!cur.done && ((cur.value.timeline) < timeElap) ) { //同じタイミングで実行するものがあれば、全て実行
                 // 送信処理
                 this.emit('data', cur.value);
+                cur.value.executed = true;
                 cur = iterator.next(); //次をセット
                 if (cur.done) { //最後
                     this._reachToEnd();

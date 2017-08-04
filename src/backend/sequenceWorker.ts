@@ -2,9 +2,9 @@
 
 import {PlayerCommand, ESPrCommand, TargetDevice} from './defines';
 import {MqttManager,MqttManagerEventCallback} from './mqttManager';
-import {IpcMessage, IpcMessageType, IpcMaintMessage} from './ipcMessage';
+import {IpcMessage, IpcMessageType, IpcMaintMessage} from './model/ipcMessage';
 import SequenceDataManager from './sequenceDataManager';
-import SequenceData from './sequenceData';
+import SequenceData from './model/sequenceData';
 
 const MQ_URL = 'mqtt://localhost';
 

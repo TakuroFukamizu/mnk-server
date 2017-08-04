@@ -1,6 +1,6 @@
 
 import {PlayerCommand, ESPrCommand, TargetDevice} from './defines';
-import MqttData from './mqttData';
+import MqttData from './model/mqttData';
 import {connect, MqttClient} from 'mqtt';
 
 export class MqttManager {

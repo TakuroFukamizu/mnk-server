@@ -1,7 +1,7 @@
 import assert from 'power-assert';
 import * as mocha from 'mocha';
+import SequenceData from './model/sequenceData';
 import SequenceDataManager from './sequenceDataManager';
-import SequenceData from './sequenceData';
 import { ESPrCommand } from './defines'
 
 

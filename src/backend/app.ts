@@ -4,7 +4,7 @@ import * as express from "express";
 import * as http from 'http';
 import * as child from 'child_process';
 import * as path from 'path';
-import {IpcMessage, IpcMessageType, IpcMaintMessage} from './ipcMessage';
+import {IpcMessage, IpcMessageType, IpcMaintMessage} from './model/ipcMessage';
 
 const app = express();
 const httpServer = http.createServer(app);
