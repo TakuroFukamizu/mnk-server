@@ -21,7 +21,6 @@ export default class Spreadsheet {
         let ret = await this.getInfoAndWorksheets();
         // console.log('Loaded doc: '+ret.info.title+' by '+ret.info.author.email);
         let rows = await this.getRows(this.sheet);
-        console.log(rows);
         return rows;
     }
     private async setAuth(creds) {
