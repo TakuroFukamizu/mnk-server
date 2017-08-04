@@ -8,8 +8,8 @@ import {IpcMessage, IpcMessageType, IpcMaintMessage} from './model/ipcMessage';
 import LocalDataManager from './localDataManager';
 import SequenceDataset from './model/sequenceDataset';
 import SequenceData from './model/sequenceData';
-
-const DEFAULT_PORT = 80;
+import Spreadsheet from './spreadsheet';
+import {Config} from './config';
 
 const PATH_SEQWORKER = path.join(__dirname, 'sequenceWorker');
 const PATH_WEBAPP = path.join(__dirname, 'public');
@@ -25,6 +25,7 @@ const local = new LocalDataManager();
 
 let isMqttConnected = false;
 let onExitProcess = false;
+let isChildProcessRun = false;
 
 function initialize() {
     if (process.env.STUB) {
@@ -32,18 +33,25 @@ function initialize() {
     }
 
     // ローカルファイルの設定
-    local.basepath = path.join(__dirname, '.work');
+    local.basepath = __dirname;
     local.sequenceDataFilename = 'sequcence.json';
 
-    // デバイスの初期化
-    seqWorker.send(new IpcMessage(IpcMessageType.Maint, IpcMaintMessage.Init));
+    // // デバイスの初期化
+    // seqWorker.send(new IpcMessage(IpcMessageType.Maint, IpcMaintMessage.Init));
+    // まだつながってない。
 
     // 保存されているシーケンスデータをセット
-    let dataset = local.loadSequenceDataset();
+    let dataset;
+    try {
+        dataset = local.loadSequenceDataset();
+    } catch (error) {
+        dataset = new SequenceDataset(); //エラーの場合は保存なし
+    }
+    seqWorker.send(new IpcMessage(IpcMessageType.SequenceData, dataset.list));
 }
 
 function checkState(): boolean {
-    return isMqttConnected
+    return isMqttConnected && isChildProcessRun;
 }
 
 // ----------------------------------------------
@@ -59,11 +67,16 @@ const seqWorker: child.ChildProcess = child.fork(PATH_SEQWORKER) // sequence wor
         switch(msgObj.type) {
             case IpcMessageType.State:
                 console.log(msgObj.payload);
-                // FIXME
-                if (msgObj.payload == "mqtt.connected") {
-                    console.log("mqtt is ready");
-                    isMqttConnected = true;
+                switch(msgObj.payload) {
+                    case "mqtt.connected":
+                        console.log("mqtt is ready");
+                        isMqttConnected = true;
+                        break;
+                    case "running":
+                        console.log("child process is ready");
+                        isChildProcessRun = true;
                 }
+                // FIXME
                 break;
             case IpcMessageType.Info:
                 console.log(msgObj.payload);
@@ -79,6 +92,7 @@ const seqWorker: child.ChildProcess = child.fork(PATH_SEQWORKER) // sequence wor
     .on('exit', () => {
         if (!onExitProcess) {
             console.error("child process is dead.");
+            isChildProcessRun = false;
             // FIXME
         }
     });
@@ -90,29 +104,54 @@ const seqWorker: child.ChildProcess = child.fork(PATH_SEQWORKER) // sequence wor
 // ----------------------------------------------
 
 app.use(express.static(PATH_WEBAPP));
-app.get('/_api/loadSeq', (req, res) => {
-    // TODO: Google Spreadsheetからデータを取得
-    // https://www.npmjs.com/package/google-spreadsheet
+app.get('/_api/status', (req, res) => {
+    res.json({ isChildProcessRun, isMqttConnected });
+});
+app.get('/_api/device/front/off', (req, res) => {
+    // front off
+    seqWorker.send(new IpcMessage(IpcMessageType.Maint, IpcMaintMessage.EspFrontOff));
+    res.json({ command: "frontOff", status: "success", message: "" });
+});
+app.get('/_api/device/rear/off', (req, res) => {
+    // rear off
+    seqWorker.send(new IpcMessage(IpcMessageType.Maint, IpcMaintMessage.EspRearOff));
+    res.json({ command: "rearOff", status: "success", message: "" });
+});
+app.get('/_api/loadSeq', async (req, res) => {
+    // Google Spreadsheetからデータを取得
+    // let name = req.query.docId;
+
     if (!checkState()) {
         res.json({ command: "loadSeq", status: "error", message: "busy" });
     }
+    try {
+        // https://www.npmjs.com/package/google-spreadsheet
+        let gs = new Spreadsheet();
+        let rows = await gs.load();
 
-    let jsonObj = {
-        list: [
-            [ "mononoke", "1.2", "front", "low", "予備のコラム", "メモ、コメント用" ],
-            [ "mononoke", "1.2", "front", "low", "予備のコラム", "メモ、コメント用" ]
-        ]
-    };
-    let dataset = new SequenceDataset();
-    for(let row of jsonObj.list) {
-        dataset.list.push(SequenceData.fromAny(row));
+        let dataset = new SequenceDataset();
+        for(let row of rows) { //Google Spreadsheetのデータを変換
+            // dataset.list.push(SequenceData.fromAny(row));
+            console.log(row.deviceId);
+            dataset.list.push(new SequenceData(
+                row.topic, 
+                parseFloat(row.timeline) * 1000, 
+                row.deviceid, //toLowarCaseされる
+                row.command, 
+                row.data, 
+                row.comment))
+        }
+        seqWorker.send(new IpcMessage(IpcMessageType.SequenceData, dataset.list));
+
+        // ローカルに保存
+        local.saveSequenceDataset(dataset);
+
+        res.json({ command: "loadSeq", status: "success" });
+        
+    } catch (error) {
+        console.error(error);
+        res.json({ command: "loadSeq", status: "error", message: error });
     }
-    seqWorker.send(new IpcMessage(IpcMessageType.SequenceData, dataset.list));
-
-    // ローカルに保存
-    local.saveSequenceDataset(dataset);
-
-    res.json({ command: "loadSeq", status: "success" });
 
     // let name = req.query.name;
     // userProf.profile(name).then((parsedData) => {
@@ -155,8 +194,8 @@ initialize();
 // const server = app.listen(process.env.PORT || DEFAULT_PORT, () => {
 //     console.log("Node.js is listening to PORT:" + server.address().port);
 // });
-httpServer.listen(process.env.PORT || DEFAULT_PORT, () => {
-    console.log("Node.js is listening to PORT:" + process.env.PORT || DEFAULT_PORT);
+httpServer.listen(process.env.PORT || Config.HTTP_PORT, () => {
+    console.log("Node.js is listening to PORT:" + process.env.PORT || Config.HTTP_PORT);
 });
 
 process.on("exit", () => {

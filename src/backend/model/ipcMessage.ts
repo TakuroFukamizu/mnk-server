@@ -11,7 +11,7 @@ export class IpcMessage {
         // { type, payload }
         let type: IpcMessageType;
         try {
-            IpcMessageType.keys.filter((key) => object.type == key.toString() )[0];
+            type = IpcMessageType.keys.filter((key) => object.type == key.toString() )[0];
         } catch (error) {
             throw new Error("unsupported type");
         }
@@ -46,7 +46,9 @@ export namespace IpcMessageType {
     export const keys: Array<IpcMessageType> = [State, Command, Maint, SequenceData, Info]
 }
 
-export type IpcMaintMessage = "initialize";
+export type IpcMaintMessage = "initialize" | "esp.front.off" | "esp.rear.off";
 export namespace IpcMaintMessage {
     export const Init: IpcMaintMessage = "initialize"
+    export const EspFrontOff: IpcMaintMessage = "esp.front.off"
+    export const EspRearOff: IpcMaintMessage = "esp.rear.off"
 }

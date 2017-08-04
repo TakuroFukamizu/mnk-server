@@ -17,9 +17,8 @@ import 'stylesheets/app.scss'
 import 'stylesheets/sk-folding-cube.css'
 import 'stylesheets/sk-spinner.css'
 
-// Socket.io
-import VueSocketio from 'vue-socket.io';
-Vue.use(VueSocketio, 'http://localhost:1923');
+// import VueThreejs from 'vue-threejs'
+// Vue.use(VueThreejs)
 
 // axios
 Vue.prototype.$http = axios

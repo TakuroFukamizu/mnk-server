@@ -1,0 +1,32 @@
+// Bulma stylesheet
+.hero.is-primary {
+  background-color: #ffcc00;
+  a.nav-item {
+    // color: rgba(255, 255, 255, 1);
+    color: #000;
+    font-weight: bold;
+  }
+}
+.button.is-primary {
+  background-color: #ffcc00;
+  color: #000;
+}
+.button.is-primary.is-hovered, .button.is-primary:hover {
+  background-color: #ffcc66;
+  color: #000;
+}
+
+a.color {
+  color: #ff9900;
+}
+
+.image {
+  img {
+    border-radius: 15px;
+  }
+}
+
+.pagination {
+  padding-top: 30px;
+}
+

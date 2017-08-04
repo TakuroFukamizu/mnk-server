@@ -5,12 +5,12 @@ import {MqttManager,MqttManagerEventCallback} from './mqttManager';
 import {IpcMessage, IpcMessageType, IpcMaintMessage} from './model/ipcMessage';
 import SequenceDataManager from './sequenceDataManager';
 import SequenceData from './model/sequenceData';
-
-const MQ_URL = 'mqtt://localhost';
+import MqttData from './model/mqttData';
+import {Config} from './config';
 
 console.log("child start");
 
-const mqtt = new MqttManager(MQ_URL);
+const mqtt = new MqttManager(Config.MQ_URL, Config.MQ_USER, Config.MQ_PASS);
 let seqData: SequenceDataManager | null = null;
 
 // ローカルに保存済みのシーケンスデータがある場合は読み込む
@@ -23,12 +23,14 @@ mqtt.connect();
 mqtt.onConnectEvent = () => {
     // client.subscribe('presence')
     process.send(new IpcMessage(IpcMessageType.State, "mqtt.connected")); //親に通知
+    initialize(); //イニシャライズ
 };
 
 // parent processからのコマンド
 process.on("message", (msg) => {
     console.log(msg);
     let msgObj = IpcMessage.fromAny(msg);
+    console.log(msgObj.type);
     switch(msgObj.type) {
         case IpcMessageType.State:
             console.log(msgObj.payload);
@@ -38,6 +40,12 @@ process.on("message", (msg) => {
             switch (msgObj.payload) {
                 case IpcMaintMessage.Init:
                     initialize();
+                    break;
+                case IpcMaintMessage.EspFrontOff:
+                    mqtt.sendCommandESPr(TargetDevice.Front, ESPrCommand.Off);
+                    break;
+                case IpcMaintMessage.EspRearOff:
+                    mqtt.sendCommandESPr(TargetDevice.Rear, ESPrCommand.Off);
                     break;
             }
             break;
@@ -67,6 +75,9 @@ process.on("exit", () =>  {
     console.log("child exit");
 });
 
+//起動を親に通知
+process.send(new IpcMessage(IpcMessageType.State, "running")); //親に通知
+
 
 // -------------------------
 
@@ -75,9 +86,14 @@ process.on("exit", () =>  {
  */
 function initialize() {
     // デバイスの初期化
-    mqtt.sendCommandESPr(TargetDevice.Front, ESPrCommand.High);
-    mqtt.sendCommandESPr(TargetDevice.Rear, ESPrCommand.High);
+    mqtt.sendCommandESPr(TargetDevice.Front, ESPrCommand.Low);
+    mqtt.sendCommandESPr(TargetDevice.Rear, ESPrCommand.Low);
     mqtt.sendCommadPlayer(PlayerCommand.Reset);
+
+    setTimeout(() => {
+        mqtt.sendCommandESPr(TargetDevice.Front, ESPrCommand.Off);
+        mqtt.sendCommandESPr(TargetDevice.Rear, ESPrCommand.Off);
+    }, 2 * 1000);
 }
 
 /**
@@ -87,11 +103,12 @@ function initialize() {
 function setSequenceData(list: Array<SequenceData>) {
     // seqData = SequenceDataManager.fromAny(value);
     seqData = new SequenceDataManager();
-    seqData.list = list;
-    
+    seqData.setData(list);
     seqData.on("data", (row) => { //SequenceDataManagerで送信要求が発生した時の処理
-        let obj: SequenceData = row;
-        let mqttData = obj.toMqttObject();
+        // let obj: SequenceData = row;
+        // let mqttData = obj.toMqttObject();
+        // emmitでmethodsが死ぬ？データ落ちしてる
+        let mqttData = new MqttData(row.deviceId, row.command, row.topic);
         mqtt.send(mqttData);
     });
     seqData.on("dataEnd", () => {

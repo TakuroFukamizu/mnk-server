@@ -1,27 +1,44 @@
 
 import {PlayerCommand, ESPrCommand, TargetDevice} from './defines';
 import MqttData from './model/mqttData';
-import {connect, MqttClient} from 'mqtt';
+import {connect, MqttClient, IClientOptions} from 'mqtt';
 
 export class MqttManager {
     brokerUrl: string;
+    user: string;
+    pass: string;
     client: MqttClient;
     topic: string = "mononoke";
     onConnectEvent: MqttManagerEventCallback;
 
-    constructor(brokerUrl: string) {
-        this.brokerUrl;
+    constructor(brokerUrl: string, user: string, pass: string) {
+        this.brokerUrl = brokerUrl;
+        this.user = user;
+        this.pass = pass;
     }
     connect() {
-        this.client = connect(this.brokerUrl);
-        this.client.on('connect', () => {
+        let client = connect(this.brokerUrl, { username: this.user, password: this.pass });
+        
+        client.on('connect', () => {
             if (this.onConnectEvent) this.onConnectEvent();
         });
+        client.on('reconnect', () => {
+            console.log('mqtt reconnect');
+        });
+        client.on('close', () => {
+            console.log('mqtt close');
+        });
+        client.on('error', (error) => {
+            console.error('mqtt error', error);
+        });
+        
         // client.on('message', function (topic, message) {
         //     // message is Buffer 
         //     console.log(message.toString())
         //     client.end()
         // });
+        // TODO: disconnectを検知
+        this.client = client;
     }
     send(message: MqttData) {
         this.client.publish(message.topic, message.toJson());

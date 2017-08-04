@@ -5,7 +5,8 @@ export default class MqttData {
     deviceId: TargetDevice;
     command: PlayerCommand | ESPrCommand; 
 
-    constructor(deviceId: TargetDevice, command: PlayerCommand | ESPrCommand) {
+    constructor(deviceId: TargetDevice, command: PlayerCommand | ESPrCommand, topic: string = null) {
+        this.topic = topic;
         this.deviceId = deviceId;
         this.command = command;
     }
@@ -30,7 +31,7 @@ export default class MqttData {
         return JSON.stringify({ 
             d: { 
                 deviceId: this.deviceId, 
-                tcommand: this.command 
+                command: this.command 
             }
         });
     }
