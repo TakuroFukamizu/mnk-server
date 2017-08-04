@@ -11,15 +11,15 @@
     "dev:backend": "npm run build:backend && export STUB=true && export PORT=8080 && node ./dist/app.js",
     "compile:backend": "node_modules/.bin/tsc",
     "build:frontend": "npm run clean:frontend && cross-env NODE_ENV=production webpack --progress --hide-modules",
-    "build:backend": "npm run compile:backend && rsync -arm --include='*/' --include='*.js' --include='*.map' --include='*.json' --exclude='*' ./src/backend/ ./dist/ && npm run clean:backend",
+    "build:backend": "npm run compile:backend && rsync -arm --include='*/' --include='*.js' --include='*.map' --include='*.json' --exclude='*' ./src/backend/ ./dist/ && find -E . -regex './src/backend/.+\\.(js|map)$' -type f | xargs rm",
     "build": "npm-run-all -p build:*",
     "clean:frontend": "rimraf ./dist/public",
     "clean:backend": "find -E . -regex './src/backend/.+\\.(js|map)$' -type f | xargs rm",
     "clean:distall": "rimraf ./dist",
     "pretest": "npm run compile:backend",
-    "test:backend": "istanbul cover _mocha -- ./src/backend/*.test.js",
+    "test:backend": "npm run build:backend && istanbul cover _mocha -- ./dist/*.test.js",
     "test": "npm-run-all -p test:*",
-    "posttest": "cd coverage && remap-istanbul -i coverage.json -o html-report -t html && npm run clean:backend"
+    "posttest": "cd coverage && remap-istanbul -i coverage.json -o html-report -t html"
   },
   "repository": {
     "type": "git",
