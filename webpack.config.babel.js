@@ -3,7 +3,7 @@ const webpack = require('webpack')
 const extractTextPlugin = require('extract-text-webpack-plugin')
 
 const _src = path.join('src', 'frontend')
-const _dist = 'public'
+const _dist = path.join('dist', 'public')
 const _stylesheets = 'stylesheets'
 const _static = 'static'
 

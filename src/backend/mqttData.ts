@@ -1,19 +1,29 @@
+import {PlayerCommand, ESPrCommand, TargetDevice} from './defines';
 
 export default class MqttData {
-    deviceId: string;
+    topic: string;
+    deviceId: TargetDevice;
     command: PlayerCommand | ESPrCommand; 
 
-    static PlayerId = "player";
-
-    constructor() {
-
+    constructor(deviceId: TargetDevice, command: PlayerCommand | ESPrCommand) {
+        this.deviceId = deviceId;
+        this.command = command;
     }
 
     static PlayerPlay() {
-        let data = new MqttData();
-        data.deviceId = MqttData.PlayerId;
-        data.command = PlayerCommand.Play;
-        return data;
+        return new MqttData(TargetDevice.Player, PlayerCommand.Play);
+    }
+    static PlayerPause() {
+        return new MqttData(TargetDevice.Player, PlayerCommand.Pause);
+    }
+    static PlayerReset() {
+        return new MqttData(TargetDevice.Player, PlayerCommand.Reset);
+    }
+    static ESPrFront(command: ESPrCommand) {
+        return new MqttData(TargetDevice.Front, command);
+    }
+    static ESPrRear(command: ESPrCommand) {
+        return new MqttData(TargetDevice.Rear, command);
     }
 
     toJson() {
@@ -24,18 +34,4 @@ export default class MqttData {
             }
         });
     }
-}
-
-type PlayerCommand = "play" | "pause" | "reset";
-namespace PlayerCommand{
-    export const Play: PlayerCommand = "play"
-    export const Pause: PlayerCommand = "pause"
-    export const Reset: PlayerCommand = "reset"
-}
-
-type ESPrCommand = "high" | "low" | "off";
-namespace ESPrCommand{
-    export const High: ESPrCommand = "high"
-    export const Low: ESPrCommand = "low"
-    export const Off: ESPrCommand = "off"
 }
