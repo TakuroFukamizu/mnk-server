@@ -23,6 +23,7 @@ const httpServer = http.createServer(app);
 
 const local = new LocalDataManager();
 
+let isMqttConnected = false;
 let onExitProcess = false;
 
 function initialize() {
@@ -41,6 +42,10 @@ function initialize() {
     let dataset = local.loadSequenceDataset();
 }
 
+function checkState(): boolean {
+    return isMqttConnected
+}
+
 // ----------------------------------------------
 
 // ----------------------------------------------
@@ -57,6 +62,7 @@ const seqWorker: child.ChildProcess = child.fork(PATH_SEQWORKER) // sequence wor
                 // FIXME
                 if (msgObj.payload == "mqtt.connected") {
                     console.log("mqtt is ready");
+                    isMqttConnected = true;
                 }
                 break;
             case IpcMessageType.Info:
@@ -87,6 +93,9 @@ app.use(express.static(PATH_WEBAPP));
 app.get('/_api/loadSeq', (req, res) => {
     // TODO: Google Spreadsheetからデータを取得
     // https://www.npmjs.com/package/google-spreadsheet
+    if (!checkState()) {
+        res.json({ command: "loadSeq", status: "error", message: "busy" });
+    }
 
     let jsonObj = {
         list: [
@@ -113,14 +122,23 @@ app.get('/_api/loadSeq', (req, res) => {
     // });
 });
 app.get('/_api/play', (req, res) => {
+    if (!checkState()) {
+        res.json({ command: "loadSeq", status: "error", message: "busy" });
+    }
     seqWorker.send(new IpcMessage(IpcMessageType.Command, "play"));
     res.json({ command: "play", status: "success" });
 });
 app.get('/_api/pause', (req, res) => {
+    if (!checkState()) {
+        res.json({ command: "loadSeq", status: "error", message: "busy" });
+    }
     seqWorker.send(new IpcMessage(IpcMessageType.Command, "pause"));
     res.json({ command: "pause", status: "success" });
 });
 app.get('/_api/reset', (req, res) => {
+    if (!checkState()) {
+        res.json({ command: "loadSeq", status: "error", message: "busy" });
+    }
     seqWorker.send(new IpcMessage(IpcMessageType.Command, "reset"));
     res.json({ command: "reset", status: "success" });
 });
