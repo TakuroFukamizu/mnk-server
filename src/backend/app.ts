@@ -97,7 +97,6 @@ const seqWorker: child.ChildProcess = child.fork(PATH_SEQWORKER) // sequence wor
         let msgObj = IpcMessage.fromAny(msg);
         switch(msgObj.type) {
             case IpcMessageType.State:
-                console.log(msgObj.payload);
                 switch(msgObj.payload) {
                     case "mqtt.connected":
                         console.log("mqtt is ready");
@@ -124,8 +123,9 @@ const seqWorker: child.ChildProcess = child.fork(PATH_SEQWORKER) // sequence wor
                 console.log(msgObj.payload);
                 break;
             case IpcMessageType.CommandResult:
-                //{ kind: msgObj.payload, result: res }
-                console.log(msgObj.payload); // TODO: apiまでどうかえすか？
+                //{ kind, result }
+                console.log(msgObj.type, msgObj.payload.kind, ': ', msgObj.payload.result); // 実際の処理はCommand発行側で必要に応じて行う
+                break;
             default:
                 console.error('unsupported message from child');
         }
