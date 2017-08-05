@@ -106,6 +106,10 @@ function setSequenceData(list: Array<SequenceData>) {
     // seqData = SequenceDataManager.fromAny(value);
     seqData = new SequenceDataManager();
     seqData.setData(list);
+    seqData.on("initData", () => {
+        //データリセット
+        process.send(new IpcMessage(IpcMessageType.State, "player.data.init")); //親に通知
+    });
     seqData.on("data", (row) => { //SequenceDataManagerで送信要求が発生した時の処理
         // let obj: SequenceData = row;
         // let mqttData = obj.toMqttObject();
@@ -117,6 +121,10 @@ function setSequenceData(list: Array<SequenceData>) {
     seqData.on("dataEnd", () => {
         //再生終了
         process.send(new IpcMessage(IpcMessageType.State, "player.data.end")); //親に通知
+    });
+    seqData.on("stopData", () => {
+        //手動停止系
+        process.send(new IpcMessage(IpcMessageType.State, "player.data.stop")); //親に通知
     });
 }
 

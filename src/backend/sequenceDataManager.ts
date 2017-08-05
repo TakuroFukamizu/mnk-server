@@ -25,6 +25,7 @@ export default class SequenceDataManager extends events.EventEmitter {
         this._buildNewQue();
         this.elapsedTime = 0;
         this.inPlaying = false;
+        this.emit("initData");
     }
 
     start() : boolean {
@@ -77,6 +78,7 @@ export default class SequenceDataManager extends events.EventEmitter {
         clearInterval(this._playTimer); 
         this.inPlaying = false;
         this._que = this._que.slice(this._lastQue, this._que.length); //次から最後まで
+        this.emit("stopData");
         return true;
     }
     reset() {
@@ -85,6 +87,7 @@ export default class SequenceDataManager extends events.EventEmitter {
         this._buildNewQue();
         this.elapsedTime = 0;
         this.inPlaying = false;
+        this.emit("initData");
         return true;
     }
 

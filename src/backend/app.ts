@@ -109,9 +109,16 @@ const seqWorker: child.ChildProcess = child.fork(PATH_SEQWORKER) // sequence wor
                             setSequqnce(currentSeqData);
                         }
                         break;
+                    case "player.data.init": //シーケンスの初期化
+                        inProgressSeq = false;
+                        sendedSeqCount = 0;
+                        break;
                     case "player.data.send": //シーケンスの送信実行(entity単位)
                         inProgressSeq = true;
                         sendedSeqCount++;
+                        break;
+                    case "player.data.stop": //シーケンスの停止
+                        inProgressSeq = false;
                         break;
                     case "player.data.end": //シーケンスの最後
                         inProgressSeq = false;
