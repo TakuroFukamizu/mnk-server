@@ -169,6 +169,8 @@ export default {
             this.playerCommandPause().then(() => {
                 this._loadEndWithMessage("一時停止しました。PLAYで再開するか、RESETで先頭に戻してください。");
                 this._stopTimer();
+
+                this.checkStatus(); //ステータス更新
             }).catch((e) => {
                 this._loadEndWithError(e);
             });
@@ -178,6 +180,8 @@ export default {
             this.playerCommandReset().then(() => {
                 this._loadEndWithMessage("リセットしました");
                 this._clearTimer();
+                
+                this.checkStatus(); //ステータス更新
             }).catch((e) => {
                 this._loadEndWithError(e);
             });
