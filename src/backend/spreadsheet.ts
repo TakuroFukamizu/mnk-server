@@ -20,7 +20,6 @@ export default class Spreadsheet {
         
         await this.setAuth(creds);
         let ret = await this.getInfoAndWorksheets();
-        // console.log('Loaded doc: '+ret.info.title+' by '+ret.info.author.email);
         let rows = await this.getRows(this.sheet);
         return rows;
     }
@@ -38,9 +37,9 @@ export default class Spreadsheet {
                     reject(err);
                 }
                 try {
-                    console.log('Loaded doc: '+info.title+' by '+info.author.email);
+                    if (Config.DEBUG) console.log('Loaded doc: '+info.title+' by '+info.author.email);
                     let sheet = info.worksheets[0];
-                    console.log('sheet 1: '+sheet.title+' '+sheet.rowCount+'x'+sheet.colCount);
+                    if (Config.DEBUG) console.log('sheet 1: '+sheet.title+' '+sheet.rowCount+'x'+sheet.colCount);
                     this.sheet = sheet;
                     resolve({info, sheet});
                 } catch (error) {
@@ -58,7 +57,7 @@ export default class Spreadsheet {
                 if (err) { 
                     reject(err);
                 }
-                console.log('Read '+rows.length+' rows');
+                if (Config.DEBUG) console.log('Read '+rows.length+' rows');
                 resovle(rows as Array<GoogleSpreadsheet.SpreadsheetRow>);
             });
         }) as Promise<Array<GoogleSpreadsheet.SpreadsheetRow>>;

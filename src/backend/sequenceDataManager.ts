@@ -1,8 +1,7 @@
 
 import SequenceData from './model/sequenceData';
 import * as events from 'events';
-
-const Debug = false;
+import {Config} from './config';
 
 export default class SequenceDataManager extends events.EventEmitter {
     list: Array<SequenceData>;
@@ -30,12 +29,12 @@ export default class SequenceDataManager extends events.EventEmitter {
 
     start() : boolean {
         if (this.inPlaying) { //再生中
-            console.log('start is requested. but execute is inprogress');
+            if (Config.DEBUG) console.log('start is requested. but execute is inprogress');
             return false;
         }
 
         if (this._que.length == 0) { //再生対象無し
-            console.log('start is requested. but seq data is empty or already executed.');
+            if (Config.DEBUG) console.log('start is requested. but seq data is empty or already executed.');
             return false;
         }
 
@@ -51,12 +50,12 @@ export default class SequenceDataManager extends events.EventEmitter {
             let diff = (now - prevTime);
             this.elapsedTime += diff;
             prevTime = now;
-            if (Debug) console.log(this.elapsedTime);
+            if (Config.DEBUG) console.log(this.elapsedTime);
 
             while (!cur.done && ((cur.value.timeline) < this.elapsedTime) ) { //同じタイミングで実行するものがあれば、全て実行
                 // 送信処理
                 this.emit('data', cur.value);
-                if (Debug) console.log(cur.value.timeline, cur.value.deviceId, cur.value.command);
+                if (Config.DEBUG) console.log(cur.value.timeline, cur.value.deviceId, cur.value.command);
                 cur.value.executed = true;
                 cur = iterator.next(); //次をセット
                 if (cur.done) { //最後

@@ -3,6 +3,7 @@ import SequenceDataset from './model/sequenceDataset';
 import ConfigDataset from './model/configDataset';
 import * as fs from 'fs';
 import * as path from 'path';
+import {Config} from './config';
 
 export default class LocalDataManager {
     basepath: string;
@@ -12,14 +13,14 @@ export default class LocalDataManager {
     private _config: ConfigDataset;
 
     private readJson(filepath: string) {
-        console.log('load: ', filepath);
+        if (Config.DEBUG) console.log('load: ', filepath);
         let obj = JSON.parse(fs.readFileSync(filepath, 'utf8'));
         // TODO: await/asyncで書き換える
         return obj;
     }
 
     private saveJson(filepath: string, data: any) {
-        console.log('save: ', filepath);
+        if (Config.DEBUG) console.log('save: ', filepath);
         if (data.toJson === undefined) {
             fs.writeFileSync(filepath, JSON.stringify(data), 'utf8');
         } else {

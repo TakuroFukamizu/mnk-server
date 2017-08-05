@@ -57,6 +57,7 @@ function initialize() {
         sequenceDocId = currentConfig.sequenceDocId;
     } catch (error) {
         // デフォルトをそのまま使う
+        if (Config.DEBUG) console.error(error);
     }
 
     // 保存されているシーケンスデータをセット
@@ -64,7 +65,7 @@ function initialize() {
     try {
         dataset = local.loadSequenceDataset();
     } catch (error) {
-        console.error('load sequenceData is failed: ', error);
+        if (Config.DEBUG) console.error('load sequenceData is failed: ', error);
         dataset = new SequenceDataset(); //エラーの場合は保存なし
     }
     setSequqnce(dataset);
@@ -93,17 +94,17 @@ function setSequqnce(dataset:SequenceDataset) {
 
 const seqWorker: child.ChildProcess = child.fork(PATH_SEQWORKER) // sequence workerをchild process実行
     .on("message", (msg) => {
-        console.log(msg);
+        if (Config.DEBUG) console.log(msg);
         let msgObj = IpcMessage.fromAny(msg);
         switch(msgObj.type) {
             case IpcMessageType.State:
                 switch(msgObj.payload) {
                     case "mqtt.connected":
-                        console.log("mqtt is ready");
+                        if (Config.DEBUG) console.log("mqtt is ready");
                         isMqttConnected = true;
                         break;
                     case "running":
-                        console.log("child process is ready");
+                        if (Config.DEBUG) console.log("child process is ready");
                         isChildProcessRun = true;
                         if (!isSeqDataApplied) {
                             setSequqnce(currentSeqData);
@@ -127,14 +128,14 @@ const seqWorker: child.ChildProcess = child.fork(PATH_SEQWORKER) // sequence wor
                 // FIXME
                 break;
             case IpcMessageType.Info:
-                console.log(msgObj.payload);
+                if (Config.DEBUG) console.log(msgObj.payload);
                 break;
             case IpcMessageType.CommandResult:
                 //{ kind, result }
-                console.log(msgObj.type, msgObj.payload.kind, ': ', msgObj.payload.result); // 実際の処理はCommand発行側で必要に応じて行う
+                if (Config.DEBUG) console.log(msgObj.type, msgObj.payload.kind, ': ', msgObj.payload.result); // 実際の処理はCommand発行側で必要に応じて行う
                 break;
             default:
-                console.error('unsupported message from child');
+                if (Config.DEBUG) console.error('unsupported message from child');
         }
 
         // setTimeout(() => {
@@ -200,7 +201,7 @@ app.get('/_api/loadSeq', async (req, res) => {
         let dataset = new SequenceDataset();
         for(let row of rows) { //Google Spreadsheetのデータを変換
             // dataset.list.push(SequenceData.fromAny(row));
-            console.log(row.deviceId);
+            if (Config.DEBUG) console.log(row.deviceId);
             dataset.list.push(new SequenceData(
                 row.topic, 
                 parseFloat(row.timeline) * 1000, 
@@ -253,7 +254,7 @@ async function playerCommandApi (res: any, kind: PlayerCommand) {
                     }
                 }
             } else {
-                console.log('not match', msgObj.type, msgObj.payload.kind);
+                if (Config.DEBUG) console.log('not match', msgObj.type, msgObj.payload.kind);
             }
         };
         seqWorker.on("message", callback);
@@ -267,7 +268,6 @@ async function playerCommandApi (res: any, kind: PlayerCommand) {
     }).catch((e) => {
         console.error('playerCommandApi', e);
         seqWorker.removeListener("message", callback);
-        console.log(e.message , e.name , e.toString());
         let msg = e.message || e.name || e.toString();
         res.status(500).json({ command: kind, status: "error", message: msg });
     });
@@ -286,11 +286,11 @@ initialize();
 //     console.log("Node.js is listening to PORT:" + server.address().port);
 // });
 httpServer.listen(process.env.PORT || Config.HTTP_PORT, () => {
-    console.log("Node.js is listening to PORT:" + process.env.PORT || Config.HTTP_PORT);
+    console.info("Node.js is listening to PORT:" + process.env.PORT || Config.HTTP_PORT);
 });
 
 process.on("exit", () => {
     onExitProcess = true;
     seqWorker.kill();
-    console.log("exit main process");
+    console.info("exit main process");
 });

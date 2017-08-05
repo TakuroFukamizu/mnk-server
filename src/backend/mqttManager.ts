@@ -2,6 +2,7 @@
 import {PlayerCommand, ESPrCommand, TargetDevice} from './defines';
 import MqttData from './model/mqttData';
 import {connect, MqttClient, IClientOptions} from 'mqtt';
+import {Config} from './config';
 
 export class MqttManager {
     brokerUrl: string;
@@ -23,10 +24,10 @@ export class MqttManager {
             if (this.onConnectEvent) this.onConnectEvent();
         });
         client.on('reconnect', () => {
-            console.log('mqtt reconnect');
+            console.info('mqtt reconnect');
         });
         client.on('close', () => {
-            console.log('mqtt close');
+            console.info('mqtt close');
         });
         client.on('error', (error) => {
             console.error('mqtt error', error);
@@ -50,7 +51,7 @@ export class MqttManager {
             case PlayerCommand.Pause: mqMsg = MqttData.PlayerPause(); break;
             case PlayerCommand.Reset: mqMsg = MqttData.PlayerReset(); break;
         }
-        console.log("sendCommadPlayer", mqMsg.toJson());
+        if (Config.DEBUG) console.log("sendCommadPlayer", mqMsg.toJson());
         this.client.publish(this.topic, mqMsg.toJson());
     }
     sendCommandESPr(target: TargetDevice, command: ESPrCommand) {
@@ -59,7 +60,7 @@ export class MqttManager {
             case TargetDevice.Front: mqMsg = MqttData.ESPrFront(command); break;
             case TargetDevice.Rear: mqMsg = MqttData.ESPrRear(command); break;
         }
-        console.log("sendCommadESPr", mqMsg.toJson());
+        if (Config.DEBUG) console.log("sendCommadESPr", mqMsg.toJson());
         this.client.publish(this.topic, mqMsg.toJson());
     }
 }

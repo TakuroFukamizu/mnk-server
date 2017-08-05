@@ -8,7 +8,6 @@ import SequenceData from './model/sequenceData';
 import MqttData from './model/mqttData';
 import {Config} from './config';
 
-console.log("child start");
 
 const mqtt = new MqttManager(Config.MQ_URL, Config.MQ_USER, Config.MQ_PASS);
 let seqData: SequenceDataManager | null = null;
@@ -28,12 +27,12 @@ mqtt.onConnectEvent = () => {
 
 // parent processからのコマンド
 process.on("message", async (msg) => {
-    console.log(msg);
+    if (Config.DEBUG) console.log(msg);
     let msgObj = IpcMessage.fromAny(msg);
-    console.log(msgObj.type);
+    if (Config.DEBUG) console.log(msgObj.type);
     switch(msgObj.type) {
         case IpcMessageType.State:
-            console.log(msgObj.payload);
+            if (Config.DEBUG) console.log(msgObj.payload);
             // FIXME
             break;
         case IpcMessageType.Maint: //メンテナンス系
@@ -74,7 +73,7 @@ process.on("message", async (msg) => {
 });
 
 process.on("exit", () =>  {
-    console.log("child exit");
+    console.info("child exit");
 });
 
 //起動を親に通知
