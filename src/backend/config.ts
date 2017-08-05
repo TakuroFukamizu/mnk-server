@@ -5,4 +5,6 @@ export namespace Config {
     export const MQ_USER = 'admin';
     export const MQ_PASS = 'raspberry';
     export const DEFAULT_DOCID = "1PjZ4KgqHhjmDMSmyA3-fDo8b1h48SWVO27pljt4TtlY";
+    // export const DEBUG = true;
+    export const DEBUG = false;
 }
