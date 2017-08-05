@@ -12,7 +12,7 @@
     "dev:backend": "npm run build:backend && export STUB=true && export PORT=8080 && node ./dist/app.js",
     "compile:backend": "$(npm bin)/tsc",
     "build:frontend": "npm run clean:frontend && cross-env NODE_ENV=production webpack --progress --hide-modules",
-    "build:backend": "npm run compile:backend && rsync -arm --include='*/' --include='*.js' --include='*.map' --include='*.json' --exclude='*' ./src/backend/ ./dist/ && find -E . -regex './src/backend/.+\\.(js|map)$' -type f | xargs rm",
+    "build:backend": "npm run compile:backend && rsync -arm --include='*/' --include='*.js' --include='*.map' --include='*.json' --exclude='*' ./src/backend/ ./dist/",
     "build": "npm-run-all -p build:*",
     "clean:frontend": "rimraf ./dist/public",
     "clean:backend": "find -E . -regex './src/backend/.+\\.(js|map)$' -type f | xargs rm",
