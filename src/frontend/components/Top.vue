@@ -91,7 +91,7 @@ export default {
     mixins: [playerCommand, maintCommand],
     data () {
         return {
-            isLoading: true,
+            isLoading: false,
             isShowMessage: false,
             progressMessage: "処理中...",
             message: null,
