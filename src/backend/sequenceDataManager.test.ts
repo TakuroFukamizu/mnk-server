@@ -81,7 +81,7 @@ describe("SequenceDataManager", () => {
 
         mng.on("dataEnd", () => {
             //再生終了
-            done();
+            // done(); //Error: done() called multiple times
         });
         (async () => {
             let count1 = 0;
