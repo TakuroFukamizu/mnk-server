@@ -222,6 +222,7 @@ app.get('/_api/pause', (req, res) => {
     playerCommandApi(res, PlayerCommand.Pause);
 });
 app.get('/_api/reset', (req, res) => {
+    sendedSeqCount = 0;
     playerCommandApi(res, PlayerCommand.Reset);
 });
 
