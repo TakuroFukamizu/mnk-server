@@ -27,7 +27,7 @@ mqtt.onConnectEvent = () => {
 };
 
 // parent processからのコマンド
-process.on("message", (msg) => {
+process.on("message", async (msg) => {
     console.log(msg);
     let msgObj = IpcMessage.fromAny(msg);
     console.log(msgObj.type);
@@ -54,17 +54,19 @@ process.on("message", (msg) => {
             setSequenceData(msgObj.payload);
             break;
         case IpcMessageType.Command: //再生制御
+            let res: boolean;
             switch (msgObj.payload) {
                 case PlayerCommand.Play:
-                    doPlay();
+                    res = await doPlay();
                     break;
                 case PlayerCommand.Pause:
-                    doPause();
+                    res = await doPause();
                     break;
                 case PlayerCommand.Reset:
-                    doReset();
+                    res = await doReset();
                     break;
             }
+            process.send(new IpcMessage(IpcMessageType.CommandResult, { kind: msgObj.payload, result: res })); //親に通知
             break;
         default:
             console.error('unsupported message from parent');
@@ -110,36 +112,50 @@ function setSequenceData(list: Array<SequenceData>) {
         // emmitでmethodsが死ぬ？データ落ちしてる
         let mqttData = new MqttData(row.deviceId, row.command, row.topic);
         mqtt.send(mqttData);
+        process.send(new IpcMessage(IpcMessageType.State, "player.data.send")); //親に通知
     });
     seqData.on("dataEnd", () => {
         //再生終了
+        process.send(new IpcMessage(IpcMessageType.State, "player.data.end")); //親に通知
     });
 }
 
 /**
  * 再生開始
  */
-function doPlay() {
-    mqtt.sendCommadPlayer(PlayerCommand.Play);
-    seqData.start();
+async function doPlay() {
+    if (seqData.start()) {
+        mqtt.sendCommadPlayer(PlayerCommand.Play);
+        return true;
+    } else {
+        return false;
+    }
 }
 
 /**
  * 一時停止
  */
-function doPause() {
+async function doPause() {
     // ESPrの制御が途中であればステータスを保存 //動作させたままでもいいか？
-    mqtt.sendCommadPlayer(PlayerCommand.Pause);
-    seqData.pause();
+    if (seqData.pause()) {
+        mqtt.sendCommadPlayer(PlayerCommand.Pause);
+        return true;
+    } else {
+        return false;
+    }
 }
 
 
 /**
  * 最初から再生
  */
-function doReset() {
-    mqtt.sendCommadPlayer(PlayerCommand.Reset);
-    seqData.reset();
+async function doReset() {
+    if (seqData.reset()) {
+        mqtt.sendCommadPlayer(PlayerCommand.Reset);
+        return true;
+    } else {
+        return false;
+    }
 }
 
 

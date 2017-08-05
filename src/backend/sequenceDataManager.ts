@@ -2,12 +2,16 @@
 import SequenceData from './model/sequenceData';
 import * as events from 'events';
 
+const Debug = true;
+
 export default class SequenceDataManager extends events.EventEmitter {
     list: Array<SequenceData>;
     timerIntMillisec: number = 100;
     inPlaying: boolean = false;
+    elapsedTime: number = 0; //再生経過時間(ms)
 
     private _que: Array<number>;
+    private _lastQue: number;
     private _playTimer: NodeJS.Timer;
 
     constructor() {
@@ -17,21 +21,11 @@ export default class SequenceDataManager extends events.EventEmitter {
     }
     setData(list: Array<SequenceData>) {
         this.list = list;
-        this._clearExecutedFlag();
+        clearInterval(this._playTimer);
+        this._buildNewQue();
+        this.elapsedTime = 0;
+        this.inPlaying = false;
     }
-    // static fromAny(list: any) {
-    //     let instance = new SequenceDataManager();
-    //     for(let row of list) {
-    //         try {
-    //             let d = SequenceData.fromAny(row);
-    //             instance.list.push(d);
-    //         } catch (error) {
-    //             // skip
-    //             console.error(error, row);
-    //         }
-    //     }
-    //     return instance;
-    // }
 
     start() : boolean {
         if (this.inPlaying) { //再生中
@@ -47,17 +41,21 @@ export default class SequenceDataManager extends events.EventEmitter {
         let iterator = this._items();
         let cur: IteratorResult<SequenceData>;
 
-        let timeStart = new Date().getTime();
+        let prevTime = new Date().getTime();
 
         let tick = () => {
-            let timeElap = (new Date().getTime() - timeStart) + this.timerIntMillisec;
+            // let timeElap = (new Date().getTime() - timeStart) + this.timerIntMillisec;
+            // this.elapsedTime += this.timerIntMillisec;
+            let now = new Date().getTime();
+            let diff = (now - prevTime);
+            this.elapsedTime += diff;
+            prevTime = now;
+            if (Debug) console.log(this.elapsedTime);
 
-            while (!cur.done && ((cur.value.timeline) < timeElap) ) { //同じタイミングで実行するものがあれば、全て実行
+            while (!cur.done && ((cur.value.timeline) < this.elapsedTime) ) { //同じタイミングで実行するものがあれば、全て実行
                 // 送信処理
-                console.log('data', cur.value);
-                console.log('data-deviceId', cur.value.deviceId);
-                console.log('data-topic', cur.value.topic);
                 this.emit('data', cur.value);
+                if (Debug) console.log(cur.value.timeline, cur.value.deviceId, cur.value.command);
                 cur.value.executed = true;
                 cur = iterator.next(); //次をセット
                 if (cur.done) { //最後
@@ -75,37 +73,39 @@ export default class SequenceDataManager extends events.EventEmitter {
         return true;
     }
     pause() {
-        if (!this.inPlaying) return;
+        // if (!this.inPlaying) return false; //面倒なので、停止済みの場合も同じ処理にする
         clearInterval(this._playTimer); 
         this.inPlaying = false;
+        this._que = this._que.slice(this._lastQue, this._que.length); //次から最後まで
+        return true;
     }
     reset() {
-        if (!this.inPlaying) return;
+        // if (this.inPlaying) return false;
         clearInterval(this._playTimer);
-        this._clearExecutedFlag();
+        this._buildNewQue();
+        this.elapsedTime = 0;
         this.inPlaying = false;
+        return true;
     }
 
     private * _items() {
-        for(let i of this._que) {
-            yield this.list[i];
+        for(let i = 0; i<this._que.length; i++) {
+            this._lastQue = i;
+            let index = this._que[i];
+            yield this.list[index];
         }
     }
 
     private _reachToEnd() {
+        this._que = []; //再生対象は0
+        clearInterval(this._playTimer);
+
         setTimeout(() => {
-            clearInterval(this._playTimer);
             this.inPlaying = false;
             this.emit("dataEnd");
         }, 500); // 500msバッファを置いて終了イベントを走らせる
     }
-    private _clearExecutedFlag() {
-        // for (let row of this.list) {
-        //     row.executed = false; //未再生にする
-        // }
-        // this.list.forEach((row, i, arr) => {
-        //     arr[i].executed = false; //未再生にする
-        // });
+    private _buildNewQue() {
         this._que = this.list.map((row, i) =>  i );
     }
 }

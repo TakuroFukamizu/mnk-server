@@ -36,14 +36,15 @@ export class IpcMessage {
     }
 }
 
-export type IpcMessageType = "state" | "command" | "maint" | "data.sequence" | "info";
+export type IpcMessageType = "state" | "command" | "command.result" | "maint" | "data.sequence" | "info";
 export namespace IpcMessageType {
     export const State: IpcMessageType = "state"
     export const Command: IpcMessageType = "command"
+    export const CommandResult: IpcMessageType = "command.result"
     export const Maint: IpcMessageType = "maint"
     export const SequenceData: IpcMessageType = "data.sequence"
     export const Info: IpcMessageType = "info"
-    export const keys: Array<IpcMessageType> = [State, Command, Maint, SequenceData, Info]
+    export const keys: Array<IpcMessageType> = [State, Command, CommandResult, Maint, SequenceData, Info]
 }
 
 export type IpcMaintMessage = "initialize" | "esp.front.off" | "esp.rear.off";

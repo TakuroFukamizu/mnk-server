@@ -1,14 +1,15 @@
 
 import * as GoogleSpreadsheet from 'google-spreadsheet';
-const creds = require('./MononokeVr-66c3a8761d4f.json');
+import {Config} from './config';
+const creds = require('./assets/MononokeVr-66c3a8761d4f.json');
 
 export default class Spreadsheet {
     docId: string;
     doc: any;
     sheet: any;
 
-    constructor() {
-        this.docId = "1PjZ4KgqHhjmDMSmyA3-fDo8b1h48SWVO27pljt4TtlY";
+    constructor(docId: string = null) {
+        this.docId = docId || Config.DEFAULT_DOCID;
         this.doc = new GoogleSpreadsheet(this.docId);
     }
     async load(): Promise<Array<GoogleSpreadsheet.SpreadsheetRow>> {
@@ -33,11 +34,18 @@ export default class Spreadsheet {
     private async getInfoAndWorksheets() {
         return new Promise((resolve, reject) => {
             this.doc.getInfo((err, info) => {
-                console.log('Loaded doc: '+info.title+' by '+info.author.email);
-                let sheet = info.worksheets[0];
-                console.log('sheet 1: '+sheet.title+' '+sheet.rowCount+'x'+sheet.colCount);
-                this.sheet = sheet;
-                resolve({info, sheet});
+                if (err) { 
+                    reject(err);
+                }
+                try {
+                    console.log('Loaded doc: '+info.title+' by '+info.author.email);
+                    let sheet = info.worksheets[0];
+                    console.log('sheet 1: '+sheet.title+' '+sheet.rowCount+'x'+sheet.colCount);
+                    this.sheet = sheet;
+                    resolve({info, sheet});
+                } catch (error) {
+                    reject(error);
+                }
             });
         });
     }
@@ -45,8 +53,11 @@ export default class Spreadsheet {
         return new Promise((resovle, reject) => {
             sheet.getRows({
                 offset: 1,
-                limit: 20
+                limit: 200
             }, (err, rows) => {
+                if (err) { 
+                    reject(err);
+                }
                 console.log('Read '+rows.length+' rows');
                 resovle(rows as Array<GoogleSpreadsheet.SpreadsheetRow>);
             });

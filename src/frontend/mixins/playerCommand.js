@@ -39,15 +39,9 @@ class PlayerCommand {
                     reject(e);
                 }
             }, (error) => {
-                // switch(error.response.status) {
-                //     case 403:
-                //         message = 'API rate limit exceeded'
-                //         break
-                //     default:
-                //         message = error.response.data.message
-                // }
-                // reject(message);
-                reject(error.response);
+                console.error(error);
+                let message = error.response.data.message || error.response.statusText || error.message || error;
+                reject(message);
             });
         });
     }

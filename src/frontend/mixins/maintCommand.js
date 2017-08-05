@@ -7,6 +7,7 @@ class MaintCommand {
             maintCommandLoadSeq : () => this.loadSeq(),
             maintCommandFrontOff : () => this.frontOff(),
             maintCommandRearOff : () => this.rearOff(),
+            maintCommandChangeDocId: (docId) => this.changeDocId(docId),
             maintCommandCheckStatus : () => this.checkStatus(),
         }
     }
@@ -15,16 +16,12 @@ class MaintCommand {
         let options = null;
         return new Promise((resolve, reject) => {
             Xhr.get(url, options, (response) => {
-                console.log(response);
+                console.log(response.data);
+                //{ isChildProcessRun, isMqttConnected, isSeqDataApplied, inProgressSeq, sendedSeqCount, totalSeqCount }
                 resolve(response.data);
             }, (error) => {
-                switch(error.response.status) {
-                    case 403:
-                        message = 'API rate limit exceeded'
-                        break
-                    default:
-                        message = error.response.data.message
-                }
+                console.error(error);
+                let message = error.response.data.message || error.response.statusText || error.message || error;
                 reject(message);
             });
         });
@@ -37,12 +34,20 @@ class MaintCommand {
         let url = '/_api/device/rear/off';
         return this._sendApi(url);
     }
+    changeDocId(docId) {
+        let url = '/_api/changeDocId';
+        let options = {
+            params: {
+                docId: docId
+            }
+        };
+        return this._sendApi(url, options);
+    }
     loadSeq() {
         let url = '/_api/loadSeq';
         return this._sendApi(url);
     }
-    _sendApi(url) {
-        let options = null;
+    _sendApi(url, options = null) {
         return new Promise((resolve, reject) => {
             Xhr.get(url, options, (response) => {
                 console.log(response);
@@ -59,13 +64,8 @@ class MaintCommand {
                     reject(e);
                 }
             }, (error) => {
-                switch(error.response.status) {
-                    case 403:
-                        message = 'API rate limit exceeded'
-                        break
-                    default:
-                        message = error.response.data.message
-                }
+                console.error(error);
+                let message = error.response.data.message || error.response.statusText || error.message || error;
                 reject(message);
             });
         });

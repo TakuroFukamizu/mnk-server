@@ -4,11 +4,13 @@ import * as express from "express";
 import * as http from 'http';
 import * as child from 'child_process';
 import * as path from 'path';
+import {PlayerCommand} from './defines';
 import {IpcMessage, IpcMessageType, IpcMaintMessage} from './model/ipcMessage';
 import LocalDataManager from './localDataManager';
 import SequenceDataset from './model/sequenceDataset';
 import SequenceData from './model/sequenceData';
 import Spreadsheet from './spreadsheet';
+import ConfigDataset from './model/configDataset';
 import {Config} from './config';
 
 const PATH_SEQWORKER = path.join(__dirname, 'sequenceWorker');
@@ -23,9 +25,17 @@ const httpServer = http.createServer(app);
 
 const local = new LocalDataManager();
 
-let isMqttConnected = false;
-let onExitProcess = false;
-let isChildProcessRun = false;
+let currentSeqData: SequenceDataset;
+let isSeqDataApplied = false; //シーケンスデータが一度でもセットされているか
+
+let inProgressSeq = false; //シーケンスの実行中か
+let sendedSeqCount = 0; //送信済みのシーケンスの数
+
+let isMqttConnected = false; //MQTT接続 YES/NO
+let isChildProcessRun = false; //Workerのプロセスが起動済みかどうか
+let onExitProcess = false; //収量処理中
+
+let sequenceDocId = Config.DEFAULT_DOCID;
 
 function initialize() {
     if (process.env.STUB) {
@@ -35,23 +45,44 @@ function initialize() {
     // ローカルファイルの設定
     local.basepath = __dirname;
     local.sequenceDataFilename = 'sequcence.json';
+    local.configFilename = 'current_configs.json';
 
     // // デバイスの初期化
     // seqWorker.send(new IpcMessage(IpcMessageType.Maint, IpcMaintMessage.Init));
     // まだつながってない。
+
+    // 設定読み出し
+    try {
+        let currentConfig = local.loadConfig();
+        sequenceDocId = currentConfig.sequenceDocId;
+    } catch (error) {
+        // デフォルトをそのまま使う
+    }
 
     // 保存されているシーケンスデータをセット
     let dataset;
     try {
         dataset = local.loadSequenceDataset();
     } catch (error) {
+        console.error('load sequenceData is failed: ', error);
         dataset = new SequenceDataset(); //エラーの場合は保存なし
     }
-    seqWorker.send(new IpcMessage(IpcMessageType.SequenceData, dataset.list));
+    setSequqnce(dataset);
+    currentSeqData = dataset;
 }
 
 function checkState(): boolean {
     return isMqttConnected && isChildProcessRun;
+}
+
+function setSequqnce(dataset:SequenceDataset) {
+    if (!isChildProcessRun) return false;
+
+    seqWorker.send(new IpcMessage(IpcMessageType.SequenceData, dataset.list));
+    isSeqDataApplied = true;
+    inProgressSeq = false;
+    sendedSeqCount = 0;
+    return true;
 }
 
 // ----------------------------------------------
@@ -75,12 +106,26 @@ const seqWorker: child.ChildProcess = child.fork(PATH_SEQWORKER) // sequence wor
                     case "running":
                         console.log("child process is ready");
                         isChildProcessRun = true;
+                        if (!isSeqDataApplied) {
+                            setSequqnce(currentSeqData);
+                        }
+                        break;
+                    case "player.data.send": //シーケンスの送信実行(entity単位)
+                        inProgressSeq = true;
+                        sendedSeqCount++;
+                        break;
+                    case "player.data.end": //シーケンスの最後
+                        inProgressSeq = false;
+                        break;
                 }
                 // FIXME
                 break;
             case IpcMessageType.Info:
                 console.log(msgObj.payload);
                 break;
+            case IpcMessageType.CommandResult:
+                //{ kind: msgObj.payload, result: res }
+                console.log(msgObj.payload); // TODO: apiまでどうかえすか？
             default:
                 console.error('unsupported message from child');
         }
@@ -105,7 +150,14 @@ const seqWorker: child.ChildProcess = child.fork(PATH_SEQWORKER) // sequence wor
 
 app.use(express.static(PATH_WEBAPP));
 app.get('/_api/status', (req, res) => {
-    res.json({ isChildProcessRun, isMqttConnected });
+    res.json({ 
+        isChildProcessRun, 
+        isMqttConnected, 
+        isSeqDataApplied, 
+        inProgressSeq, 
+        sendedSeqCount, 
+        totalSeqCount:currentSeqData.list.length 
+    });
 });
 app.get('/_api/device/front/off', (req, res) => {
     // front off
@@ -117,16 +169,25 @@ app.get('/_api/device/rear/off', (req, res) => {
     seqWorker.send(new IpcMessage(IpcMessageType.Maint, IpcMaintMessage.EspRearOff));
     res.json({ command: "rearOff", status: "success", message: "" });
 });
+app.get('/_api/changeDocId', (req, res) => {
+    let docId = req.query.docId;
+    if (docId == null || docId.length == 0) {
+        res.status(500).json({ command: "changeDocId", status: "error", message: "入力された値が不正です。" });
+        return;
+    }
+    local.saveConfigSequenceDocId(docId);
+    sequenceDocId = docId;
+    res.json({ command: "changeDocId", status: "success", message: "" });
+});
 app.get('/_api/loadSeq', async (req, res) => {
     // Google Spreadsheetからデータを取得
-    // let name = req.query.docId;
-
-    if (!checkState()) {
-        res.json({ command: "loadSeq", status: "error", message: "busy" });
+    if (!checkState() || inProgressSeq) {
+        res.status(409).json({ command: "loadSeq", status: "error", message: "処理中か、開始処理が不足しているため実行できません。" });
+        return;
     }
     try {
         // https://www.npmjs.com/package/google-spreadsheet
-        let gs = new Spreadsheet();
+        let gs = new Spreadsheet(sequenceDocId);
         let rows = await gs.load();
 
         let dataset = new SequenceDataset();
@@ -141,46 +202,68 @@ app.get('/_api/loadSeq', async (req, res) => {
                 row.data, 
                 row.comment))
         }
-        seqWorker.send(new IpcMessage(IpcMessageType.SequenceData, dataset.list));
+        setSequqnce(dataset); //workerにセット
+        currentSeqData = dataset;
+        // seqWorker.send(new IpcMessage(IpcMessageType.SequenceData, dataset.list));
 
         // ローカルに保存
         local.saveSequenceDataset(dataset);
 
         res.json({ command: "loadSeq", status: "success" });
-        
     } catch (error) {
         console.error(error);
-        res.json({ command: "loadSeq", status: "error", message: error });
+        res.status(500).json({ command: "loadSeq", status: "error", message: error });
     }
-
-    // let name = req.query.name;
-    // userProf.profile(name).then((parsedData) => {
-    //     res.json(parsedData);
-    // }).catch((errorCode) => {
-    //     res.status(errorCode).end();
-    // });
 });
 app.get('/_api/play', (req, res) => {
-    if (!checkState()) {
-        res.json({ command: "loadSeq", status: "error", message: "busy" });
-    }
-    seqWorker.send(new IpcMessage(IpcMessageType.Command, "play"));
-    res.json({ command: "play", status: "success" });
+    playerCommandApi(res, PlayerCommand.Play);
 });
 app.get('/_api/pause', (req, res) => {
-    if (!checkState()) {
-        res.json({ command: "loadSeq", status: "error", message: "busy" });
-    }
-    seqWorker.send(new IpcMessage(IpcMessageType.Command, "pause"));
-    res.json({ command: "pause", status: "success" });
+    playerCommandApi(res, PlayerCommand.Pause);
 });
 app.get('/_api/reset', (req, res) => {
-    if (!checkState()) {
-        res.json({ command: "loadSeq", status: "error", message: "busy" });
-    }
-    seqWorker.send(new IpcMessage(IpcMessageType.Command, "reset"));
-    res.json({ command: "reset", status: "success" });
+    playerCommandApi(res, PlayerCommand.Reset);
 });
+
+async function playerCommandApi (res: any, kind: PlayerCommand) {
+    if (!checkState()) {
+        res.status(409).json({ command: kind, status: "error", message: "処理中か、開始処理が不足しているため実行できません。" });
+        return Promise.reject(new Error("status error"));
+    }
+    let callback: any;
+    return new Promise((resolve, reject) => {
+        callback = (msg) => {
+            let msgObj = IpcMessage.fromAny(msg);
+            if (msgObj.type == IpcMessageType.CommandResult && msgObj.payload.kind == kind) {
+                if (msgObj.payload.result) {
+                    resolve();
+                } else {
+                    switch(kind) {
+                        case PlayerCommand.Play: reject(new Error('操作できません。再生済みか、他の処理が実行中です。')); break;
+                        case PlayerCommand.Pause: reject(new Error('操作できません。再生中ではないか、他の処理が実行中です。')); break;
+                        case PlayerCommand.Reset: reject(new Error('操作できません。他の処理が実行中です。')); break;
+                    }
+                }
+            } else {
+                console.log('not match', msgObj.type, msgObj.payload.kind);
+            }
+        };
+        seqWorker.on("message", callback);
+        seqWorker.send(new IpcMessage(IpcMessageType.Command, kind));
+        setTimeout(() => {
+            reject(new Error("処理が時間切れになりました。サーバ内部でエラーが発生している可能性があります。"));
+        }, 30 * 1000);
+    }).then(() => {
+        seqWorker.removeListener("message", callback);
+        res.json({ command: kind, status: "success" });
+    }).catch((e) => {
+        console.error('playerCommandApi', e);
+        seqWorker.removeListener("message", callback);
+        console.log(e.message , e.name , e.toString());
+        let msg = e.message || e.name || e.toString();
+        res.status(500).json({ command: kind, status: "error", message: msg });
+    });
+}
 
 
 // ----------------------------------------------
