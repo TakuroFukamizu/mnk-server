@@ -2,7 +2,7 @@
 import SequenceData from './model/sequenceData';
 import * as events from 'events';
 
-const Debug = true;
+const Debug = false;
 
 export default class SequenceDataManager extends events.EventEmitter {
     list: Array<SequenceData>;
