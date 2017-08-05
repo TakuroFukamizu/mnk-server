@@ -12,14 +12,14 @@
                 button.delete(v-on:click="disableMessage")
                 p {{message}}
         template(v-if="isLoading")
-            .columns
+            .columns.is-full
                 .column.is-10.is-offset-1
-                p {{progressMessage}}
-                div.sk-folding-cube
-                    .sk-cube1.sk-cube
-                    .sk-cube2.sk-cube
-                    .sk-cube4.sk-cube
-                    .sk-cube3.sk-cube
+                    p {{progressMessage}}
+                    div.sk-folding-cube
+                        .sk-cube1.sk-cube
+                        .sk-cube2.sk-cube
+                        .sk-cube4.sk-cube
+                        .sk-cube3.sk-cube
                 // mdl-progress(indeterminate)
         template(v-else)
             .columns.is-mobile.is-multiline
@@ -91,7 +91,7 @@ export default {
     mixins: [playerCommand, maintCommand],
     data () {
         return {
-            isLoading: false,
+            isLoading: true,
             isShowMessage: false,
             progressMessage: "処理中...",
             message: null,
