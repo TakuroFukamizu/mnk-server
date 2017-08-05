@@ -180,7 +180,7 @@ export default {
             this.playerCommandReset().then(() => {
                 this._loadEndWithMessage("リセットしました");
                 this._clearTimer();
-                
+
                 this.checkStatus(); //ステータス更新
             }).catch((e) => {
                 this._loadEndWithError(e);
@@ -226,7 +226,7 @@ export default {
                 this.elapsedTime += diff;
                 prevTime = now;
 
-                if ( (this.elapsedTime % 5000) != 0 ) { //5秒ごとにステータス更新
+                if ( (Math.round(this.elapsedTime / 1000) % 3) == 0 ) { //3秒ごとにステータス更新
                     this.checkStatus();
                 }
             };
